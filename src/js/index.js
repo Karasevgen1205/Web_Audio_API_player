@@ -10,11 +10,13 @@ let sourceNode;
 let startedAt;
 let pausedAt;
 let paused = true;
-
+let newTime;
 const playBtn = document.querySelector(".play");
+playBtn.setAttribute("disabled", "disabled");
 const stopBtn = document.querySelector(".stop");
 const valueControl = document.querySelector(".value-control");
 const valueValue = document.querySelector(".value-value");
+const trackValue = document.querySelector(".track-control");
 
 function load(url) {
 	const request = new XMLHttpRequest();
@@ -27,20 +29,23 @@ function load(url) {
 }
 load(url);
 
-function play() {
+function play(newTime = 0) {
 	sourceNode = ctx.createBufferSource();
+	sourceNode.connect(gainNode);
 	sourceNode.connect(ctx.destination);
 	sourceNode.buffer = buffer;
-	sourceNode.connect(gainNode);
 	gainNode.gain.value = valueControl.value;
 	paused = false;
 
 	if (pausedAt) {
 		startedAt = Date.now() - pausedAt;
-		sourceNode.start(0, pausedAt / 1000);
+		// if(newTime === pausedAt) {
+		// 	sourceNode.start(0, pausedAt / 1000);
+		// }
+		ourceNode.start(0, pausedAt / 1000);
 	} else {
 		startedAt = Date.now();
-		sourceNode.start(0);
+		sourceNode.start(0, newTime);
 	}
 }
 
@@ -52,6 +57,7 @@ function pause() {
 
 function onBufferLoad(b) {
 	buffer = b;
+	playBtn.removeAttribute("disabled");
 }
 
 function onBufferError(e) {
@@ -60,7 +66,7 @@ function onBufferError(e) {
 
 playBtn.onclick = () => {
 	if (paused) {
-		play();
+		play(newTime);
 		playBtn.innerHTML = "Pause";
 	} else {
 		pause();
@@ -71,18 +77,30 @@ playBtn.onclick = () => {
 stopBtn.onclick = () => {
 	sourceNode.stop(0);
 	sourceNode = ctx.createBufferSource();
+	sourceNode.connect(gainNode);
 	sourceNode.connect(ctx.destination);
+	gainNode.gain.value = valueControl.value;
 	paused = true;
 	startedAt = 0;
 	pausedAt = 0;
+	trackValue.value = 0;
 	playBtn.innerHTML = "Play";
 };
 
 valueControl.oninput = () => {
 	gainNode.gain.value = valueControl.value;
-	valueValue.innerHTML = Math.round(valueControl.value * 100);
+	valueValue.innerHTML = Math.round((valueControl.value * 100 + 100) / 2);
 };
 
+trackValue.onchange = () => {
+	if (!paused) {
+		let value = Math.round(trackValue.value * 100);
+		newTime = (sourceNode.buffer.duration / 100) * value;
+		sourceNode.stop(0);
+		play(newTime);
+		// console.log((pausedAt = Math.round(newTime * 1000)));
+	}
+};
 //////////////////////////////////////////////////////////////////
 // const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 // let source = audioCtx.createBufferSource();
